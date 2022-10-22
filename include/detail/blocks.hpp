@@ -1,43 +1,99 @@
 #ifndef STATIC_ALLOCATOR_BLOCKS_HPP
 #define STATIC_ALLOCATOR_BLOCKS_HPP
 
+#include <cstring>
+#include <new>
+
 #include "compiler_macros.h"
 #include "types.hpp"
+#include "../util/launder_cast.hpp"
+#include "../util/passert.h"
 #include "../util/resize.hpp"
 
 namespace parcel::detail {
-    struct block_data {
-        static constexpr parcel::umax_t total_size = alignof(std::max_align_t);
-        parcel::umax_t size : util::to_bits<total_size> - alignof(std::max_align_t) - 2;
-        parcel::umax_t padding : alignof(std::max_align_t);
-        bool is_array : 1;
-        bool is_active : 1;
+    using header_size_t = umax_t;
+
+    static constexpr
+    umax_t pad_amount() {
+        constexpr umax_t count =
+                sizeof(header_size_t) + sizeof(void*) + sizeof(void*);
+        constexpr umax_t pad_by = count % alignof(std::max_align_t);
+        return pad_by;
+    }
+
+    constexpr umax_t pad_v = pad_amount();
+
+    struct unpadded_header {
+        header_size_t size : sizeof(header_size_t) * CHAR_BIT - 1 = 0;
+        bool is_active : 1 = false;
+        unpadded_header* prev = nullptr;
+        unpadded_header* next = nullptr;
     };
 
-    struct header_t {
-        alignas(std::max_align_t) block_data data {};
+    struct padded_header {
+        header_size_t size : sizeof(header_size_t) * CHAR_BIT - 1 = 0;
+        bool is_active : 1 = false;
+        padded_header* prev = nullptr;
+        padded_header* next = nullptr;
+        unsigned char padding[pad_v];
     };
 
-    struct footer_t {
-        alignas(std::max_align_t) block_data data {};
-    };
+    using header_impl = std::conditional_t<pad_v == 0, unpadded_header, padded_header>;
 
-    template <parcel::umax_t Blocks>
-    struct base_block {
-        alignas(std::max_align_t) parcel::byte_t data[Blocks] { 0 };
+
+
+    template <umax_t Blocks>
+    struct global_container_t {
+        static constexpr umax_t bytes = util::power_of_2<Blocks>;
+        static_assert(bytes > sizeof(header_impl));
+
+        alignas(std::max_align_t) byte_t data[bytes] { 0 };
+        header_impl* heap_base;
+        umax_t heap_size = 0;
+
+        global_container_t() {
+            auto* primary_header = std::launder( new(begin())(header_impl) {} );
+            primary_header->prev = primary_header;
+            primary_header->next = primary_header;
+
+            heap_base = primary_header;
+            heap_size = sizeof(header_impl) + heap_base->size;
+        }
 
         constexpr
-        parcel::byte_t* begin() {
+        byte_t* begin() {
             return data;
         }
 
         constexpr
-        parcel::byte_t* end() {
-            return data + Blocks;
+        byte_t* end() {
+            return data + bytes;
+        }
+
+        void reset_container() {
+            std::memset(data, 0x0, bytes);
+
+            auto* primary_header = std::launder( new (begin())(header_impl) {} );
+            primary_header->prev = primary_header;
+            primary_header->next = primary_header;
+
+            heap_base = primary_header;
+            heap_size = sizeof(header_impl) + heap_base->size;
+        }
+
+        [[nodiscard]]
+        void* sbrk(umax_t n) {
+            pretty_assert(data + heap_size + n < end(),
+                "void* sbrk(umax_t n):"
+                " insufficient heap space");
+
+            byte_t* current_heap = data + heap_size;
+            heap_size += n;
+            return current_heap;
         }
 
         bool is_valid(void* ptr) {
-            auto* arith_ptr = reinterpret_cast<parcel::byte_t*>(ptr);
+            auto* arith_ptr = launder_cast<byte_t*>(ptr);
             return static_cast<bool>(arith_ptr) && (arith_ptr >= begin()) && (arith_ptr < end());
         }
     };

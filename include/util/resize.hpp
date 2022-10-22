@@ -1,13 +1,15 @@
 #ifndef STATIC_ALLOCATOR_RESIZE_HPP
 #define STATIC_ALLOCATOR_RESIZE_HPP
 
-#include <limits.h>
+#include <climits>
 #include <utility>
 #include "../detail/types.hpp"
 
 namespace parcel::util {
+
+
     template <parcel::umax_t N>
-    constexpr
+    static constexpr
     parcel::umax_t fold_power() {
         if constexpr( N == 0 ) {
             return 1;
@@ -25,22 +27,6 @@ namespace parcel::util {
     template <parcel::umax_t N>
     constexpr
     parcel::umax_t power_of_2 = fold_power<N>();
-
-
-    template <parcel::umax_t N, parcel::umax_t S = N / 8>
-    constexpr
-    parcel::umax_t header_gen() {
-        if constexpr( S == 0 ) {
-            return 1;
-        }
-        else {
-            return S;
-        }
-    }
-
-    template <parcel::umax_t N>
-    constexpr
-    parcel::umax_t header_size = header_gen<N>();
 
     template <parcel::umax_t Bytes>
     constexpr
