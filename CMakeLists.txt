@@ -3,6 +3,7 @@ project(parcel CXX)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
+# ( thanks phyto :D )
 target_include_directories(${PROJECT_NAME} INTERFACE include)
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 
