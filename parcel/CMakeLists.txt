@@ -3,7 +3,7 @@ project(parcel CXX)
 
 add_library(${PROJECT_NAME} INTERFACE)
 
-target_include_directories(${PROJECT_NAME} INTERFACE parcel/include)
+target_include_directories(${PROJECT_NAME} INTERFACE include)
 target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_20)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
