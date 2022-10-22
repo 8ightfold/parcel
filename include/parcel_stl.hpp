@@ -39,7 +39,7 @@ namespace parcel {
     using stack = std::stack<T, parcel::deque<T>>;
 
     template <typename CharType>
-    using basic_string = typename std::basic_string<CharType, std::char_traits<CharType>, parcel::allocator<CharType>>;
+    using basic_string = std::basic_string<CharType, std::char_traits<CharType>, parcel::allocator<CharType>>;
 
     using string	= basic_string<char>;
     using wstring	= basic_string<wchar_t>;
@@ -54,7 +54,7 @@ namespace parcel {
     using unordered_set = std::unordered_set<K, Hash, KeyEqual, parcel::allocator<K>>;
 
     template <typename T>
-    using vector = typename std::vector<T, parcel::allocator<T>>;
+    using vector = std::vector<T, parcel::allocator<T>>;
 }
 
 #endif //STATIC_ALLOCATOR_PARCEL_STL_HPP
